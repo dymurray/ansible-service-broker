@@ -18,6 +18,7 @@ type Broker interface {
 	Deprovision(uuid.UUID) (*DeprovisionResponse, error)
 	Bind(uuid.UUID, uuid.UUID, *BindRequest) (*BindResponse, error)
 	Unbind(uuid.UUID, uuid.UUID) error
+	LastOperation(uuid.UUID, *LastOperationRequest) (*LastOperationResponse, error)
 }
 
 type AnsibleBroker struct {
@@ -331,9 +332,9 @@ func (a AnsibleBroker) LastOperation(instanceUUID uuid.UUID, req *LastOperationR
 		look up the resource in etcd
 		take the status and return that.
 	*/
-	a.log.Debug(req.ServiceID) // optional
-	a.log.Debug(req.PlanID)    // optional
-	a.log.Debug(req.Operation) // this is provided with the provision. task id from the work_engine
+	a.log.Debug(req.ServiceID.String()) // optional
+	a.log.Debug(req.PlanID.String())    // optional
+	a.log.Debug(req.Operation)          // this is provided with the provision. task id from the work_engine
 	state := LastOperationStateInProgress
 	return &LastOperationResponse{State: state, Description: ""}, nil
 }

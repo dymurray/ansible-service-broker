@@ -46,6 +46,8 @@ func NewHandler(b broker.Broker) http.Handler {
 		createVarHandler(h.bind)).Methods("PUT")
 	h.router.HandleFunc("/v2/service_instances/{instance_uuid}/service_bindings/{binding_uuid}",
 		createVarHandler(h.unbind)).Methods("DELETE")
+	h.router.HandleFunc("/v2/service_instances/{instance_uuid}/last_operation",
+		createVarHandler(h.lastoperation)).Methods("GET")
 
 	return h
 }
@@ -58,6 +60,28 @@ func (h handler) bootstrap(w http.ResponseWriter, r *http.Request, params map[st
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.router.ServeHTTP(w, r)
+}
+
+func (h handler) lastoperation(w http.ResponseWriter, r *http.Request, params map[string]string) {
+	defer r.Body.Close()
+
+	instanceUUID := uuid.Parse(params["instance_uuid"])
+	if instanceUUID == nil {
+		writeResponse(w, http.StatusBadRequest, broker.ErrorResponse{Description: "invalid instance_uuid"})
+		return
+	}
+
+	var req *broker.LastOperationRequest
+	err := readRequest(r, &req)
+
+	if err != nil {
+		writeResponse(w, http.StatusBadRequest, broker.ErrorResponse{Description: "could not read request: " + err.Error()})
+		return
+	}
+
+	resp, err := h.broker.LastOperation(instanceUUID, req)
+
+	writeDefaultResponse(w, http.StatusOK, resp, err)
 }
 
 func (h handler) catalog(w http.ResponseWriter, r *http.Request, params map[string]string) {

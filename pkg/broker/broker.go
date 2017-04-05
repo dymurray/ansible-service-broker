@@ -179,7 +179,7 @@ func (a AnsibleBroker) Provision(instanceUUID uuid.UUID, req *ProvisionRequest) 
 	// Operation needs to be present if this is an async provisioning
 	// 202 (Accepted), inprogress last_operation status
 	// Will need to come with a "state" update in etcd on the ServiceInstance
-	return &ProvisionResponse{Operation: "successful"}, nil
+	return &ProvisionResponse{Operation: "successful"}, nil // operation should be the task id from the work_engine
 }
 
 func (a AnsibleBroker) Deprovision(instanceUUID uuid.UUID) (*DeprovisionResponse, error) {
@@ -324,4 +324,16 @@ func (a AnsibleBroker) Unbind(instanceUUID uuid.UUID, bindingUUID uuid.UUID) err
 
 func (a AnsibleBroker) Update(instanceUUID uuid.UUID, req *UpdateRequest) (*UpdateResponse, error) {
 	return nil, notImplemented
+}
+
+func (a AnsibleBroker) LastOperation(instanceUUID uuid.UUID, req *LastOperationRequest) (*LastOperationResponse, error) {
+	/*
+		look up the resource in etcd
+		take the status and return that.
+	*/
+	a.log.Debug(req.ServiceID) // optional
+	a.log.Debug(req.PlanID)    // optional
+	a.log.Debug(req.Operation) // this is provided with the provision. task id from the work_engine
+	state := LastOperationStateInProgress
+	return &LastOperationResponse{State: state, Description: ""}, nil
 }

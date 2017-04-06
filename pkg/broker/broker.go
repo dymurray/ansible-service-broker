@@ -26,6 +26,7 @@ type AnsibleBroker struct {
 	log           *logging.Logger
 	clusterConfig apb.ClusterConfig
 	registry      apb.Registry
+	engine        *WorkEngine
 }
 
 func NewAnsibleBroker(
@@ -33,6 +34,7 @@ func NewAnsibleBroker(
 	log *logging.Logger,
 	clusterConfig apb.ClusterConfig,
 	registry apb.Registry,
+	engine WorkEngine,
 ) (*AnsibleBroker, error) {
 
 	broker := &AnsibleBroker{
@@ -40,6 +42,7 @@ func NewAnsibleBroker(
 		log:           log,
 		clusterConfig: clusterConfig,
 		registry:      registry,
+		engine:        engine,
 	}
 
 	return broker, nil
@@ -86,7 +89,7 @@ func (a AnsibleBroker) Catalog() (*CatalogResponse, error) {
 	return &CatalogResponse{services}, nil
 }
 
-func (a AnsibleBroker) Provision(instanceUUID uuid.UUID, req *ProvisionRequest) (*ProvisionResponse, error) {
+func (a AnsibleBroker) Provision(instanceUUID uuid.UUID, req *ProvisionRequest, async bool) (*ProvisionResponse, error) {
 	////////////////////////////////////////////////////////////
 	//type ProvisionRequest struct {
 
@@ -173,6 +176,18 @@ func (a AnsibleBroker) Provision(instanceUUID uuid.UUID, req *ProvisionRequest) 
 			a.log.Error("%s", err.Error())
 			return nil, err
 		}
+		/*
+			if async {
+
+					// TODO: figure out what we're actually creating here
+						type RunnerJob(fn func(string, map[string]string, ClusterConfig, log.Logger))
+					w := func(spec, parameters, a.clusterConfig, a.log) error {
+						apb.Provision(spec, parameters, a.clusterConfig, a.log)
+					}
+				token := a.engine.StartNewJob(work)
+			} else {
+				err = apb.Provision(spec, parameters, a.clusterConfig, a.log)
+		*/
 	}
 
 	// TODO: What data needs to be sent back on a respone?
@@ -331,10 +346,15 @@ func (a AnsibleBroker) LastOperation(instanceUUID uuid.UUID, req *LastOperationR
 	/*
 		look up the resource in etcd
 		take the status and return that.
+
+		process:
+
+		if async, provision: it should create a Job that calls apb.Provision. And write the output to etcd.
 	*/
 	a.log.Debug(req.ServiceID.String()) // optional
 	a.log.Debug(req.PlanID.String())    // optional
 	a.log.Debug(req.Operation)          // this is provided with the provision. task id from the work_engine
+
 	state := LastOperationStateInProgress
 	return &LastOperationResponse{State: state, Description: ""}, nil
 }

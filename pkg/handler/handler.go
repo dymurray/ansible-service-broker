@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/fusor/ansible-service-broker/pkg/broker"
 	"github.com/gorilla/mux"
@@ -101,6 +102,12 @@ func (h handler) provision(w http.ResponseWriter, r *http.Request, params map[st
 		return
 	}
 
+	async, err := strconv.ParseBool(params["accepts_incomplete"])
+	if err != nil {
+		writeResponse(w, http.StatusBadRequest, broker.ErrorResponse{Description: "invalid accepts_incomplete value: true | false"})
+		return
+	}
+
 	var req *broker.ProvisionRequest
 	err := readRequest(r, &req)
 
@@ -109,7 +116,7 @@ func (h handler) provision(w http.ResponseWriter, r *http.Request, params map[st
 		return
 	}
 
-	resp, err := h.broker.Provision(instanceUUID, req)
+	resp, err := h.broker.Provision(instanceUUID, req, async)
 
 	if errors.IsNotFound(err) || errors.IsInvalid(err) {
 		writeResponse(w, http.StatusBadRequest, broker.ErrorResponse{Description: "instance not found: " + err.Error()})

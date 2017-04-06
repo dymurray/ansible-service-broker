@@ -20,9 +20,8 @@ type WorkMsg interface {
 ////////////////////////////////////////////////////////////
 func SubscriberFactory(sub string) WorkSubscriber {
 	// Totally unncessary, but cool nonetheless
-	if sub == "socket" {
-		//return NewSocketWorkSubscriber()
-		return nil
+	if sub == "etcd" {
+		return NewEtcdWorkSubscriber()
 	} else {
 		return &StdoutWorkSubscriber{}
 	}

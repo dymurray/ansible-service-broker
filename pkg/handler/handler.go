@@ -80,14 +80,16 @@ func (h handler) provision(w http.ResponseWriter, r *http.Request, params map[st
 		return
 	}
 
-	async, err := strconv.ParseBool(params["accepts_incomplete"])
-	if err != nil {
-		writeResponse(w, http.StatusBadRequest, broker.ErrorResponse{Description: "invalid accepts_incomplete value: true | false"})
-		return
+	var async bool
+	queryparams := r.URL.Query()
+
+	if val, ok := queryparams["accepts_incomplete"]; ok {
+		// ignore the error, if async can't be parsed it will be false
+		async, _ = strconv.ParseBool(val[0])
 	}
 
 	var req *broker.ProvisionRequest
-	err = readRequest(r, &req)
+	err := readRequest(r, &req)
 
 	if err != nil {
 		writeResponse(w, http.StatusBadRequest, broker.ErrorResponse{Description: "could not read request: " + err.Error()})

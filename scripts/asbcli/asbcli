@@ -193,7 +193,7 @@ class App(object):
             print 'Broker reported provisioning success!'
             return False
         else:
-            print 'ERROR: Got a non-2xx code back from the broker...'
+            print 'ERROR: Got a non-2xx code back from the broker... %d' % res.status_code
             return True
 
     def _prompt_binding(self):
@@ -455,7 +455,7 @@ class App(object):
         # Generate a uuid instance ID acting as a Service Catalog would do
         instance_id = str(uuid.uuid4())
         plan_id = str(uuid.uuid4())  # not clear how this is used yet, req tho
-        path = '/service_instances/%s' % instance_id
+        path = '/service_instances/%s?accepts_incomplete=true' % instance_id
         req_body = {
             'plan_id': plan_id,
             'service_id': service_id,

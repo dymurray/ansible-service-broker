@@ -163,10 +163,12 @@ func (a AnsibleBroker) Provision(instanceUUID uuid.UUID, req *ProvisionRequest, 
 	var token string
 
 	if async {
+		a.log.Info("ASYNC provisioning in progress")
 		// asyncronously provision and return the token for the lastoperation
 		pjob := NewProvisionJob(spec, parameters, a.clusterConfig, a.log)
 		token = a.engine.StartNewJob(pjob)
 	} else {
+		a.log.Info("reverting to synchronous provisioning in progress")
 		extCreds, err := apb.Provision(spec, parameters, a.clusterConfig, a.log)
 		if err != nil {
 			a.log.Error("broker::Provision error occurred.")

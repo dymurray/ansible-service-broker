@@ -102,6 +102,8 @@ func (h handler) provision(w http.ResponseWriter, r *http.Request, params map[st
 		writeResponse(w, http.StatusBadRequest, broker.ErrorResponse{Description: "instance not found: " + err.Error()})
 	} else if errors.IsAlreadyExists(err) {
 		writeResponse(w, http.StatusConflict, broker.ProvisionResponse{})
+	} else if async {
+		writeDefaultResponse(w, http.StatusAccepted, resp, err)
 	} else {
 		writeDefaultResponse(w, http.StatusCreated, resp, err)
 	}
@@ -205,12 +207,26 @@ func (h handler) lastoperation(w http.ResponseWriter, r *http.Request, params ma
 		return
 	}
 
-	var req *broker.LastOperationRequest
-	err := readRequest(r, &req)
+	req := *broker.LastOperationRequest{}
 
-	if err != nil {
-		writeResponse(w, http.StatusBadRequest, broker.ErrorResponse{Description: "could not read request: " + err.Error()})
+	queryparams := r.URL.Query()
+
+	// operation is rqeuired
+	if val, ok := queryparams["operation"]; ok {
+		req.Operation = val[0]
+	} else {
+		writeResponse(w, http.StatusBadRequest, broker.ErrorResponse{Description: "invalid operation"})
 		return
+	}
+
+	// service_id is optional
+	if val, ok := queryparams["service_id"]; ok {
+		req.ServiceID, _ = uuid.Parse(val[0])
+	}
+
+	// plan_id is optional
+	if val, ok := queryparams["plan_id"]; ok {
+		req.PlanID, _ = uuid.Parse(val[0])
 	}
 
 	resp, err := h.broker.LastOperation(instanceUUID, req)

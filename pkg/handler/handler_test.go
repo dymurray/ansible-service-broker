@@ -32,7 +32,7 @@ func (m MockBroker) Catalog() (*broker.CatalogResponse, error) {
 	m.called("catalog", true)
 	return nil, m.Err
 }
-func (m MockBroker) Provision(uuid.UUID, *broker.ProvisionRequest) (*broker.ProvisionResponse, error) {
+func (m MockBroker) Provision(uuid.UUID, *broker.ProvisionRequest, bool) (*broker.ProvisionResponse, error) {
 	m.called("provision", true)
 	return &broker.ProvisionResponse{Operation: "successful"}, m.Err
 }
@@ -51,6 +51,10 @@ func (m MockBroker) Bind(uuid.UUID, uuid.UUID, *broker.BindRequest) (*broker.Bin
 func (m MockBroker) Unbind(uuid.UUID, uuid.UUID) error {
 	m.called("unbind", true)
 	return m.Err
+}
+func (m MockBroker) LastOperation(uuid.UUID, *broker.LastOperationRequest) (*broker.LastOperationResponse, error) {
+	m.called("lastoperation", true)
+	return nil, m.Err
 }
 
 func TestNewHandler(t *testing.T) {

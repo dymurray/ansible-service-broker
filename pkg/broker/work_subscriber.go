@@ -21,7 +21,8 @@ type WorkMsg interface {
 func SubscriberFactory(sub string) WorkSubscriber {
 	// Totally unncessary, but cool nonetheless
 	if sub == "etcd" {
-		return NewEtcdWorkSubscriber()
+		//return NewProvisionWorkSubscriber()
+		return nil
 	} else {
 		return &StdoutWorkSubscriber{}
 	}

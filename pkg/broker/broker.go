@@ -13,7 +13,7 @@ import (
 type Broker interface {
 	Bootstrap() (*BootstrapResponse, error)
 	Catalog() (*CatalogResponse, error)
-	Provision(uuid.UUID, *ProvisionRequest) (*ProvisionResponse, error)
+	Provision(uuid.UUID, *ProvisionRequest, bool) (*ProvisionResponse, error)
 	Update(uuid.UUID, *UpdateRequest) (*UpdateResponse, error)
 	Deprovision(uuid.UUID) (*DeprovisionResponse, error)
 	Bind(uuid.UUID, uuid.UUID, *BindRequest) (*BindResponse, error)
@@ -42,7 +42,7 @@ func NewAnsibleBroker(
 		log:           log,
 		clusterConfig: clusterConfig,
 		registry:      registry,
-		engine:        engine,
+		engine:        &engine,
 	}
 
 	return broker, nil
@@ -160,34 +160,29 @@ func (a AnsibleBroker) Provision(instanceUUID uuid.UUID, req *ProvisionRequest, 
 		return nil, err
 	}
 
-	// TODO: Async? Bring in WorkEngine.
-	extCreds, err := apb.Provision(spec, parameters, a.clusterConfig, a.log)
-	if err != nil {
-		a.log.Error("broker::Provision error occurred.")
-		a.log.Error("%s", err.Error())
-		return nil, err
-	}
+	var token string
 
-	if extCreds != nil {
-		a.log.Debug("broker::Provision, got ExtractedCredentials!")
-		err = a.dao.SetExtractedCredentials(instanceUUID.String(), extCreds)
+	if async {
+		// asyncronously provision and return the token for the lastoperation
+		pjob := NewProvisionJob(spec, parameters, a.clusterConfig, a.log)
+		token = a.engine.StartNewJob(pjob)
+	} else {
+		extCreds, err := apb.Provision(spec, parameters, a.clusterConfig, a.log)
 		if err != nil {
-			a.log.Error("Could not persist extracted credentials")
+			a.log.Error("broker::Provision error occurred.")
 			a.log.Error("%s", err.Error())
 			return nil, err
 		}
-		/*
-			if async {
 
-					// TODO: figure out what we're actually creating here
-						type RunnerJob(fn func(string, map[string]string, ClusterConfig, log.Logger))
-					w := func(spec, parameters, a.clusterConfig, a.log) error {
-						apb.Provision(spec, parameters, a.clusterConfig, a.log)
-					}
-				token := a.engine.StartNewJob(work)
-			} else {
-				err = apb.Provision(spec, parameters, a.clusterConfig, a.log)
-		*/
+		if extCreds != nil {
+			a.log.Debug("broker::Provision, got ExtractedCredentials!")
+			err = a.dao.SetExtractedCredentials(instanceUUID.String(), extCreds)
+			if err != nil {
+				a.log.Error("Could not persist extracted credentials")
+				a.log.Error("%s", err.Error())
+				return nil, err
+			}
+		}
 	}
 
 	// TODO: What data needs to be sent back on a respone?
@@ -195,7 +190,7 @@ func (a AnsibleBroker) Provision(instanceUUID uuid.UUID, req *ProvisionRequest, 
 	// Operation needs to be present if this is an async provisioning
 	// 202 (Accepted), inprogress last_operation status
 	// Will need to come with a "state" update in etcd on the ServiceInstance
-	return &ProvisionResponse{Operation: "successful"}, nil // operation should be the task id from the work_engine
+	return &ProvisionResponse{Operation: token}, nil // operation should be the task id from the work_engine
 }
 
 func (a AnsibleBroker) Deprovision(instanceUUID uuid.UUID) (*DeprovisionResponse, error) {

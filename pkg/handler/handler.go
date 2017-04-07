@@ -207,7 +207,7 @@ func (h handler) lastoperation(w http.ResponseWriter, r *http.Request, params ma
 		return
 	}
 
-	req := *broker.LastOperationRequest{}
+	req := broker.LastOperationRequest{}
 
 	queryparams := r.URL.Query()
 
@@ -221,15 +221,15 @@ func (h handler) lastoperation(w http.ResponseWriter, r *http.Request, params ma
 
 	// service_id is optional
 	if val, ok := queryparams["service_id"]; ok {
-		req.ServiceID, _ = uuid.Parse(val[0])
+		req.ServiceID = uuid.Parse(val[0])
 	}
 
 	// plan_id is optional
 	if val, ok := queryparams["plan_id"]; ok {
-		req.PlanID, _ = uuid.Parse(val[0])
+		req.PlanID = uuid.Parse(val[0])
 	}
 
-	resp, err := h.broker.LastOperation(instanceUUID, req)
+	resp, err := h.broker.LastOperation(instanceUUID, &req)
 
 	writeDefaultResponse(w, http.StatusOK, resp, err)
 }

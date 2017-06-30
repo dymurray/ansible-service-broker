@@ -3,6 +3,7 @@ package broker
 import (
 	"fmt"
 	"regexp"
+	"strings"
 
 	schema "github.com/lestrrat/go-jsschema"
 	"github.com/openshift/ansible-service-broker/pkg/apb"

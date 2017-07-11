@@ -11,24 +11,27 @@ import (
 // MockFile - Mock file contains fake regitry data
 var MockFile = "/etc/ansible-service-broker/mock-registry-data.yaml"
 
-// mockRegistryName - mock registry name
-var mockRegistryName = "mock"
-
-// MockAdapter - a adapter that is for mocking data
-type MockAdapter struct {
-	Config Configuration
-	Log    *logging.Logger
-	specs  map[string]*apb.Spec
+// MockRegistry - a registry that is for mocking data
+type MockRegistry struct {
+	config Configuration
+	log    *logging.Logger
 }
 
-// GetImageNames - retrieve the image names
-func (r *MockAdapter) GetImageNames() ([]string, error) {
-	r.Log.Debug("MockRegistry::LoadSpecs")
+// Init - Initialize the mock registry
+func (r *MockRegistry) Init(config Configuration, log *logging.Logger) error {
+	log.Debug("MockRegistry::Init")
+	r.config = config
+	r.log = log
+	return nil
+}
+
+// LoadSpecs - Load mock specs
+func (r *MockRegistry) LoadSpecs() ([]*apb.Spec, int, error) {
+	r.log.Debug("MockRegistry::LoadSpecs")
 
 	specYaml, err := ioutil.ReadFile(MockFile)
 	if err != nil {
-		r.Log.Debug("Failed to read registry data from %s", MockFile)
-		return nil, err
+		r.log.Debug("Failed to read registry data from %s", MockFile)
 	}
 
 	var parsedData struct {
@@ -37,36 +40,16 @@ func (r *MockAdapter) GetImageNames() ([]string, error) {
 
 	err = yaml.Unmarshal(specYaml, &parsedData)
 	if err != nil {
-		r.Log.Error("Failed to ummarshal yaml file")
-		return nil, err
+		r.log.Error("Failed to ummarshal yaml file")
 	}
 
-	r.Log.Debug("Loaded Specs: %v", parsedData)
+	r.log.Debug("Loaded Specs: %v", parsedData)
 
-	r.Log.Info("Loaded [ %d ] specs from %s registry", len(parsedData.Apps), "Mock")
-	var names []string
-	r.specs = map[string]*apb.Spec{}
+	r.log.Info("Loaded [ %d ] specs from %s registry", len(parsedData.Apps), "Mock")
 
 	for _, spec := range parsedData.Apps {
-		r.specs[spec.Image] = spec
-		names = append(names, spec.Image)
+		r.log.Debug("ID: %s", spec.ID)
 	}
-	return names, nil
-}
 
-// FetchSpecs - fetch the specs that were retrieved in the get images from the mock registry.
-func (r MockAdapter) FetchSpecs(imageNames []string) ([]*apb.Spec, error) {
-	specs := []*apb.Spec{}
-	for _, name := range imageNames {
-		spec, ok := r.specs[name]
-		if ok {
-			specs = append(specs, spec)
-		}
-	}
-	return specs, nil
-}
-
-// RegistryName - retrieve the registry name
-func (r MockAdapter) RegistryName() string {
-	return mockRegistryName
+	return parsedData.Apps, len(parsedData.Apps), nil
 }

@@ -1,12 +1,9 @@
 package registries
 
 import (
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
-
-	yaml "gopkg.in/yaml.v1"
 
 	ft "github.com/openshift/ansible-service-broker/pkg/fusortest"
 )
@@ -15,25 +12,17 @@ const testWhitelistFile = "whitelist.yaml"
 const testBlacklistFile = "blacklist.yaml"
 const testBlacklistOverrideFile = "blacklist_override.yaml"
 
-func testGetRegexFromFile(file string) []string {
+func testFilePath(file string) string {
 	gopath := os.Getenv("GOPATH")
 	if gopath == "" {
 		panic("GOPATH not set!!")
 	}
 
-	filePath := strings.Join([]string{
+	return strings.Join([]string{
 		gopath, "src", "github.com", "openshift",
-		"ansible-service-broker", "pkg", "registries", "testdata", file,
+		"ansible-service-broker", "pkg", "apb", "testdata", file,
 	}, "/")
-	contents, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		panic(err)
-	}
-	var regex []string
-	if yaml.Unmarshal(contents, &regex); err != nil {
-		panic(err)
-	}
-	return regex
+
 }
 
 func testNames() []string {
@@ -73,7 +62,7 @@ func testSetEq(a []string, b []string) bool {
 	as := toSet(a)
 	bs := toSet(b)
 
-	for k := range as {
+	for k, _ := range as {
 		if _, ok := bs[k]; !ok {
 			return false
 		}
@@ -82,10 +71,26 @@ func testSetEq(a []string, b []string) bool {
 	return true
 }
 
+func TestInit(t *testing.T) {
+	filter := NewFilter(
+		testFilePath(testWhitelistFile),
+		testFilePath(testBlacklistFile),
+	)
+
+	err := filter.Init()
+	ft.AssertNil(t, err)
+}
+
+func TestNoList(t *testing.T) {
+	filter := NewFilter("", "")
+	err := filter.Init()
+	ft.AssertNotNil(t, err)
+}
+
 func TestOnlyBlacklist(t *testing.T) {
-	filter := Filter{whitelist: []string{},
-		blacklist: testGetRegexFromFile(testBlacklistFile)}
-	filter.Init()
+	filter := NewFilter("", testFilePath(testBlacklistFile))
+	err := filter.Init()
+	ft.AssertNil(t, err)
 
 	expectedValidNames := []string{
 		"legitimate-postgresql-apb",
@@ -106,15 +111,16 @@ func TestOnlyBlacklist(t *testing.T) {
 	validNames, filteredNames := filter.Run(testNames())
 
 	expectedTotal := append(expectedValidNames, expectedFilteredNames...)
+	ft.AssertNil(t, err)
 	ft.AssertTrue(t, testSetEq(expectedValidNames, validNames))
 	ft.AssertTrue(t, testSetEq(expectedFilteredNames, filteredNames))
 	ft.AssertTrue(t, testSetEq(expectedTotal, testNames()))
 }
 
 func TestOnlyWhitelist(t *testing.T) {
-	filter := Filter{whitelist: testGetRegexFromFile(testWhitelistFile),
-		blacklist: []string{}}
-	filter.Init()
+	filter := NewFilter(testFilePath(testWhitelistFile), "")
+	err := filter.Init()
+	ft.AssertNil(t, err)
 
 	expectedValidNames := []string{
 		"legitimate-postgresql-apb",
@@ -136,6 +142,7 @@ func TestOnlyWhitelist(t *testing.T) {
 	validNames, filteredNames := filter.Run(testNames())
 
 	expectedTotal := append(expectedValidNames, expectedFilteredNames...)
+	ft.AssertNil(t, err)
 	ft.AssertTrue(t, testSetEq(expectedValidNames, validNames))
 	ft.AssertTrue(t, testSetEq(expectedFilteredNames, filteredNames))
 	ft.AssertTrue(t, testSetEq(expectedTotal, testNames()))
@@ -145,11 +152,12 @@ func TestBlackAndWhitelistOverride(t *testing.T) {
 	// If both a black and whitelist are present and both contain matches,
 	// blacklist will override anything that has passed the whitelist match and
 	// get excluded
-	filter := Filter{
-		whitelist: testGetRegexFromFile(testWhitelistFile),
-		blacklist: testGetRegexFromFile(testBlacklistOverrideFile),
-	}
-	filter.Init()
+	filter := NewFilter(
+		testFilePath(testWhitelistFile),
+		testFilePath(testBlacklistOverrideFile),
+	)
+	err := filter.Init()
+	ft.AssertNil(t, err)
 
 	expectedValidNames := []string{
 		"legitimate-postgresql-apb",
@@ -170,6 +178,7 @@ func TestBlackAndWhitelistOverride(t *testing.T) {
 	validNames, filteredNames := filter.Run(testNames())
 
 	expectedTotal := append(expectedValidNames, expectedFilteredNames...)
+	ft.AssertNil(t, err)
 	ft.AssertTrue(t, testSetEq(expectedValidNames, validNames))
 	ft.AssertTrue(t, testSetEq(expectedFilteredNames, filteredNames))
 	ft.AssertTrue(t, testSetEq(expectedTotal, testNames()))
@@ -178,11 +187,12 @@ func TestBlackAndWhitelistOverride(t *testing.T) {
 func TestBlackAndWhitelistNoOverride(t *testing.T) {
 	// Both lists set, but no overlap between sets. foo-apb should *not*
 	// be filtered compared to the Override case
-	filter := Filter{
-		whitelist: testGetRegexFromFile(testWhitelistFile),
-		blacklist: testGetRegexFromFile(testBlacklistFile),
-	}
-	filter.Init()
+	filter := NewFilter(
+		testFilePath(testWhitelistFile),
+		testFilePath(testBlacklistFile),
+	)
+	err := filter.Init()
+	ft.AssertNil(t, err)
 
 	expectedValidNames := []string{
 		"foo-apb", // NOTE: expected
@@ -203,6 +213,7 @@ func TestBlackAndWhitelistNoOverride(t *testing.T) {
 	validNames, filteredNames := filter.Run(testNames())
 
 	expectedTotal := append(expectedValidNames, expectedFilteredNames...)
+	ft.AssertNil(t, err)
 	ft.AssertTrue(t, testSetEq(expectedValidNames, validNames))
 	ft.AssertTrue(t, testSetEq(expectedFilteredNames, filteredNames))
 	ft.AssertTrue(t, testSetEq(expectedTotal, testNames()))

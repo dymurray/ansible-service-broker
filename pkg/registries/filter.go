@@ -14,47 +14,9 @@ const (
 	filterModeNone
 )
 
-type failedRegexp struct {
-	regex string
-	err   error
-}
-
-// Filter - will handle the filtering by using a black list and white list
-// of regular expressions.
 type Filter struct {
-	whitelist         []string
-	blacklist         []string
-	whiteRegexp       []*regexp.Regexp
-	blackRegexp       []*regexp.Regexp
-	failedWhiteRegexp []failedRegexp
-	failedBlackRegexp []failedRegexp
-}
-
-// Init - Initializes Filter, precompiling regex
-func (f *Filter) Init() {
-	compiled, failed := compileRegexp(f.whitelist)
-	f.whiteRegexp = compiled
-	f.failedWhiteRegexp = failed
-	compiled, failed = compileRegexp(f.blacklist)
-	f.blackRegexp = compiled
-	f.failedBlackRegexp = failed
-}
-
-func compileRegexp(regexStrs []string) ([]*regexp.Regexp, []failedRegexp) {
-	regexps := make([]*regexp.Regexp, 0, len(regexStrs))
-	failedRegexps := []failedRegexp{}
-
-	for _, str := range regexStrs {
-		cr, err := regexp.Compile(str)
-		if err != nil {
-			failedRegexps = append(failedRegexps, failedRegexp{str, err})
-			continue
-		}
-
-		regexps = append(regexps, cr)
-	}
-
-	return regexps, failedRegexps
+	whitelist []string
+	blacklist []string
 }
 
 // Run - Executes filter based on white and blacklists
@@ -65,7 +27,7 @@ func (f *Filter) Run(totalList []string) ([]string, []string) {
 	}
 
 	whiteMatchSet, blackMatchSet := genMatchSets(
-		filterMode, f.whiteRegexp, f.blackRegexp, totalList,
+		filterMode, f.whitelist, f.blacklist, totalList,
 	)
 
 	return applyMatchSets(whiteMatchSet, blackMatchSet, totalList)
@@ -73,11 +35,11 @@ func (f *Filter) Run(totalList []string) ([]string, []string) {
 
 // FilterMode - FilterMode getter
 func (f *Filter) getFilterMode() filterMode {
-	if len(f.whiteRegexp) != 0 && len(f.blackRegexp) != 0 {
+	if len(f.whitelist) != 0 && len(f.blacklist) != 0 {
 		return filterModeBoth
-	} else if len(f.whiteRegexp) != 0 {
+	} else if len(f.whitelist) != 0 {
 		return filterModeWhite
-	} else if len(f.blackRegexp) != 0 {
+	} else if len(f.blacklist) != 0 {
 		return filterModeBlack
 	}
 
@@ -88,22 +50,22 @@ type matchSetT map[string]bool
 
 func genMatchSets(
 	filterMode filterMode,
-	whiteRegexp []*regexp.Regexp,
-	blackRegexp []*regexp.Regexp,
+	whitelist []string,
+	blacklist []string,
 	totalList []string,
 ) (matchSetT, matchSetT) {
 	var whiteMatchSet, blackMatchSet matchSetT
 
 	if filterMode == filterModeBoth {
-		whiteMatchChan := genMatchSet(whiteRegexp, totalList)
-		blackMatchChan := genMatchSet(blackRegexp, totalList)
+		whiteMatchChan := genMatchSet(whitelist, totalList)
+		blackMatchChan := genMatchSet(blacklist, totalList)
 		whiteMatchSet = <-whiteMatchChan
 		blackMatchSet = <-blackMatchChan
 	} else if filterMode == filterModeWhite {
-		whiteMatchChan := genMatchSet(whiteRegexp, totalList)
+		whiteMatchChan := genMatchSet(whitelist, totalList)
 		whiteMatchSet = <-whiteMatchChan
 	} else if filterMode == filterModeBlack {
-		blackMatchChan := genMatchSet(blackRegexp, totalList)
+		blackMatchChan := genMatchSet(blacklist, totalList)
 		blackMatchSet = <-blackMatchChan
 	}
 
@@ -111,29 +73,29 @@ func genMatchSets(
 }
 
 func genMatchSet(
-	regexpList []*regexp.Regexp,
+	regexList []string,
 	totalList []string,
 ) <-chan matchSetT {
 	matchChunksChan := make(chan []string)
 
 	var wg sync.WaitGroup
-	wg.Add(len(regexpList))
+	wg.Add(len(regexList))
 
 	// Produce set of matches for each regex against each item in totalList
 	// Run each regex against totalList concurrently
 	// Expect one match set per regex, each containing the matches found
 	// when running the regex over the totalList
-	for _, rx := range regexpList {
-		go func(rx *regexp.Regexp) {
+	for _, regex := range regexList {
+		go func(regex string) {
 			matchChunk := []string{}
 			for _, testStr := range totalList {
-				if ok := rx.MatchString(testStr); ok {
+				if ok, _ := regexp.MatchString(regex, testStr); ok {
 					matchChunk = append(matchChunk, testStr)
 				}
 			}
 			matchChunksChan <- matchChunk
 			wg.Done()
-		}(rx)
+		}(regex)
 	}
 
 	// Join workers and close chunks channel when finished
@@ -174,7 +136,7 @@ func applyMatchSets(
 
 	if len(whiteMatchSet) != 0 && len(blackMatchSet) != 0 {
 		// Blacklist matches override white
-		for k := range blackMatchSet {
+		for k, _ := range blackMatchSet {
 			if _, ok := blackMatchSet[k]; ok {
 				delete(whiteMatchSet, k)
 			}
@@ -219,7 +181,7 @@ func toMatchSetT(s []string) matchSetT {
 func toSlice(m matchSetT) []string {
 	s := make([]string, len(m))
 	i := 0
-	for k := range m {
+	for k, _ := range m {
 		s[i] = k
 		i++
 	}

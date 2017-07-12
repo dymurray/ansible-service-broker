@@ -74,10 +74,9 @@ var SpecJSON = fmt.Sprintf(`
 	"tags": %s,
 	"bindable": %t,
 	"async": "%s",
-	"parameters": %s,
-        "registry_name": "%s"
+	"parameters": %s
 }
-`, SpecID, SpecDescription, SpecName, SpecImage, convertedSpecTags, SpecBindable, SpecAsync, SpecParameters, SpecRegistryName)
+`, SpecID, SpecDescription, SpecName, SpecImage, convertedSpecTags, SpecBindable, SpecAsync, SpecParameters)
 
 func TestSpecLoadJSON(t *testing.T) {
 

@@ -17,11 +17,7 @@ const dockerHubLoginURL = "https://hub.docker.com/v2/users/login/"
 const dockerHubRepoImages = "https://hub.docker.com/v2/repositories/%v/?page_size=100"
 const dockerHubManifestURL = "https://registry.hub.docker.com/v2/%v/manifests/latest"
 
-<<<<<<< 08b3559c463569e949a142b0ba0e56d91015c666
 // DockerHubAdapter - Docker Hub Adapter
-=======
-// DockerHubRegistry - Docker Hub registry
->>>>>>> first pass at refactor
 type DockerHubAdapter struct {
 	Config Configuration
 	Log    *logging.Logger
@@ -40,20 +36,13 @@ type DockerHubImageResponse struct {
 	Next    string            `json:"next"`
 }
 
-<<<<<<< 08b3559c463569e949a142b0ba0e56d91015c666
 // RegistryName - Retrieve the registry name
-=======
->>>>>>> first pass at refactor
 func (r DockerHubAdapter) RegistryName() string {
 	return dockerhubName
 }
 
-<<<<<<< 08b3559c463569e949a142b0ba0e56d91015c666
 // GetImageNames - retrieve the images
 func (r DockerHubAdapter) GetImageNames() ([]string, error) {
-=======
-func (r DockerHubAdapter) GetImages() ([]string, error) {
->>>>>>> first pass at refactor
 	r.Log.Debug("DockerHubAdapter::GetImages")
 	r.Log.Debug("BundleSpecLabel: %s", BundleSpecLabel)
 	r.Log.Debug("Loading image list for org: [ %s ]", r.Config.Org)
@@ -73,10 +62,6 @@ func (r DockerHubAdapter) GetImages() ([]string, error) {
 		return nil, err
 	}
 	//If no results in the fist call then close the channel as nothing will get loaded.
-<<<<<<< 08b3559c463569e949a142b0ba0e56d91015c666
-=======
-	r.Log.Info("%#v", imageResp)
->>>>>>> first pass at refactor
 	if len(imageResp.Results) == 0 {
 		r.Log.Info("canceled retrieval as no items in org")
 		close(channel)
@@ -84,20 +69,10 @@ func (r DockerHubAdapter) GetImages() ([]string, error) {
 	var apbData []string
 	counter := 1
 	for imageData := range channel {
-<<<<<<< 08b3559c463569e949a142b0ba0e56d91015c666
 		apbData = append(apbData, imageData)
 		if counter < imageResp.Count {
 			counter++
 		} else {
-=======
-		r.Log.Infof("%v", apbData)
-		apbData = append(apbData, imageData)
-		if counter < imageResp.Count {
-			r.Log.Infof("%v", apbData)
-			counter++
-		} else {
-			r.Log.Infof("%v", apbData)
->>>>>>> first pass at refactor
 			close(channel)
 		}
 	}
@@ -110,10 +85,7 @@ func (r DockerHubAdapter) GetImages() ([]string, error) {
 	return apbData, nil
 }
 
-<<<<<<< 08b3559c463569e949a142b0ba0e56d91015c666
 // FetchSpecs - retrieve the spec for the image names.
-=======
->>>>>>> first pass at refactor
 func (r DockerHubAdapter) FetchSpecs(imageNames []string) ([]*apb.Spec, error) {
 	specs := []*apb.Spec{}
 	for _, imageName := range imageNames {

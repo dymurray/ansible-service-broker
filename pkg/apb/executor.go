@@ -17,9 +17,9 @@
 package apb
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"os"
 	"strings"
 	"sync"
@@ -226,7 +226,7 @@ func (e *executor) executeApb(
 					Image: spec.Image,
 					Args: []string{
 						action,
-						"--extra-vars",
+						spec.Role,
 						extraVars,
 					},
 					Env:             createPodEnv(executionContext),
@@ -317,7 +317,7 @@ func createExtraVars(context *Context, parameters *Parameters) (string, error) {
 	}
 
 	paramsCopy[ClusterKey] = runtime.Provider.GetRuntime()
-	extraVars, err := json.Marshal(paramsCopy)
+	extraVars, err := yaml.Marshal(paramsCopy)
 	return string(extraVars), err
 }
 

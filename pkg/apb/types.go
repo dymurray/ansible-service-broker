@@ -93,6 +93,7 @@ type Spec struct {
 	ID          string                 `json:"id"`
 	Runtime     int                    `json:"runtime"`
 	Version     string                 `json:"version"`
+	Role        string                 `json:"role"`
 	FQName      string                 `json:"name" yaml:"name"`
 	Image       string                 `json:"image" yaml:"-"`
 	Tags        []string               `json:"tags"`
@@ -230,6 +231,7 @@ const (
 func SpecLogDump(spec *Spec) {
 	log.Debug("============================================================")
 	log.Debug("Spec: %s", spec.ID)
+	log.Debug("Role: %s", spec.Role)
 	log.Debug("============================================================")
 	log.Debug("Name: %s", spec.FQName)
 	log.Debug("Image: %s", spec.Image)

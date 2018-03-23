@@ -19,16 +19,21 @@ package adapters
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
+	b64 "encoding/base64"
 	logging "github.com/op/go-logging"
 	"github.com/openshift/ansible-service-broker/pkg/apb"
+	yaml "gopkg.in/yaml.v1"
 )
 
 const galaxyName = "galaxy"
 const galaxySearchURL = "https://galaxy.ansible.com/api/v1/search/roles/?tags=apb"
+const galaxyRoleURL = "https://galaxy.ansible.com/api/v1/roles/%v/"
 const galaxyApiURL = "https://galaxy.ansible.com/api/v1"
 
 // GalaxyAdapter - Galaxy Adapter
@@ -49,6 +54,11 @@ type GalaxyRole struct {
 	Username     string              `json:"username"`
 	RoleID       int                 `json:"role_id"`
 	Dependencies []*GalaxyDependency `json:"dependencies"`
+}
+
+// GalaxyRoleResponse - Role Response from Ansible Galaxy.
+type GalaxyRoleResponse struct {
+	Readme string `json:"readme"`
 }
 
 // GalaxySearchResponse - Search response for Galaxy.
@@ -165,7 +175,7 @@ func (r GalaxyAdapter) getNextImages(ctx context.Context,
 					ctx.Err(), image.Name)
 				return
 			default:
-				ch <- fmt.Sprintf("%v.%v", image.Username, image.Name)
+				ch <- fmt.Sprintf("%v.%v#%v", image.Username, image.Name, image.RoleID)
 			}
 		}(imageName)
 	}
@@ -173,9 +183,41 @@ func (r GalaxyAdapter) getNextImages(ctx context.Context,
 }
 
 func (r GalaxyAdapter) loadSpec(imageName string) (*apb.Spec, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf(dockerHubManifestURL, imageName, r.Config.Tag), nil)
+	spec := apb.Spec{}
+	roleName := strings.Split(imageName, "#")[0]
+	roleId := strings.Split(imageName, "#")[1]
+	req, err := http.NewRequest("GET", fmt.Sprintf(galaxyRoleURL, roleId), nil)
 	if err != nil {
 		return nil, err
 	}
-	return imageToSpec(r.Log, req, fmt.Sprintf("%s/%s:%s", r.RegistryName(), imageName, r.Config.Tag))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	role, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	roleResp := GalaxyRoleResponse{}
+	err = json.Unmarshal(role, &roleResp)
+	if err != nil {
+		return nil, err
+	}
+	if roleResp.Readme == "" {
+		return nil, errors.New("Couldn't find Readme")
+	}
+	decodedSpecYaml, err := b64.StdEncoding.DecodeString(roleResp.Readme)
+	if err != nil {
+		return nil, err
+	}
+	err = yaml.Unmarshal(decodedSpecYaml, &spec)
+	if err != nil {
+		return nil, err
+	}
+	spec.Runtime = 2
+	spec.Image = "dymurray/ansible-runner-apb"
+	spec.Role = roleName
+
+	return &spec, nil
 }

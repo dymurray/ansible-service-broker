@@ -322,6 +322,10 @@ objects:
           # manipulate the following regex to only match APBs you wish to be made available.
           white_list:
             - ".*"
+        - type: galaxy
+          name: galaxy
+          white_list:
+            - ".*"
       dao:
         type: "${DAO_TYPE}"
         etcd_host: asb-etcd.${NAMESPACE}.svc
@@ -906,7 +910,7 @@ parameters:
 - description: Always keep the namespace after an APB is executed.
   displayname: Always keep the namespace after an APB is executed.
   name: KEEP_NAMESPACE
-  value: "false"
+  value: "true"
 
 - description: Always keep the namespace after an APB is executed and has errored.
   displayname: Always keep the namespace after an APB is executed and has errored.
